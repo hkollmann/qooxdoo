@@ -1,5 +1,8 @@
 # Upcoming
 
+## Fixes
+- Restored `clone()` method in `qx.core.Object` that was accidentally removed. The method has been adapted to work with the new v8 property system.
+
 ## Breaking changes
 
 - (>=v8.0.0) Setting model data for a `qx.ui.table.Table` when the table is still editing will
