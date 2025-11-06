@@ -107,9 +107,9 @@ qx.Class.define("qx.test.ui.form.FormManager", {
       this.assertEquals(view.groups[0].items[0], this.__tf1);
       this.assertEquals(view.groups[0].items[1], this.__tf2);
 
-      // check the names
-      this.assertEquals(view.groups[0].names[0], "TF1");
-      this.assertEquals(view.groups[0].names[1], "TF2");
+      // check the names (converted to lowercase)
+      this.assertEquals(view.groups[0].names[0], "tf1");
+      this.assertEquals(view.groups[0].names[1], "tf2");
       view.dispose();
     },
 
@@ -176,9 +176,9 @@ qx.Class.define("qx.test.ui.form.FormManager", {
       this.assertEquals(view.groups[0].items[0], this.__tf1);
       this.assertEquals(view.groups[0].items[1], this.__tf2);
 
-      // check the names
-      this.assertEquals(view.groups[0].names[0], "TF1");
-      this.assertEquals(view.groups[0].names[1], "TF2");
+      // check the names (converted to lowercase)
+      this.assertEquals(view.groups[0].names[0], "tf1");
+      this.assertEquals(view.groups[0].names[1], "tf2");
 
       // check the title
       this.assertEquals("affe", view.groups[0].title);
@@ -231,9 +231,9 @@ qx.Class.define("qx.test.ui.form.FormManager", {
       this.assertEquals(view.groups[0].items[0], this.__tf1);
       this.assertEquals(view.groups[1].items[0], this.__tf2);
 
-      // check the names
-      this.assertEquals(view.groups[0].names[0], "TF1");
-      this.assertEquals(view.groups[1].names[0], "TF2");
+      // check the names (converted to lowercase)
+      this.assertEquals(view.groups[0].names[0], "tf1");
+      this.assertEquals(view.groups[1].names[0], "tf2");
 
       // check the title
       this.assertEquals("affe", view.groups[0].title);
@@ -307,9 +307,9 @@ qx.Class.define("qx.test.ui.form.FormManager", {
       this.assertEquals(view.groups[0].items[0], this.__tf1);
       this.assertEquals(view.groups[0].items[1], this.__tf2);
 
-      // check the names
-      this.assertEquals(view.groups[0].names[0], "TF1");
-      this.assertEquals(view.groups[0].names[1], "TF2");
+      // check the names (converted to lowercase)
+      this.assertEquals(view.groups[0].names[0], "tf1");
+      this.assertEquals(view.groups[0].names[1], "tf2");
 
       // check the buttons
       this.assertEquals(b1, view.buttons[0].button);
@@ -444,8 +444,9 @@ qx.Class.define("qx.test.ui.form.FormManager", {
 
       var items = this.__form.getItems();
 
-      this.assertEquals(items.TF1, this.__tf1);
-      this.assertEquals(items.TF2, this.__tf2);
+      // names are converted to lowercase
+      this.assertEquals(items.tf1, this.__tf1);
+      this.assertEquals(items.tf2, this.__tf2);
     },
 
     testGetItemsMixedWithGroups() {
@@ -458,9 +459,10 @@ qx.Class.define("qx.test.ui.form.FormManager", {
 
       var items = this.__form.getItems();
 
-      this.assertEquals(items.TF1, this.__tf1);
+      // names are converted to lowercase
+      this.assertEquals(items.tf1, this.__tf1);
       this.assertEquals(items.b, this.__tf2);
-      this.assertEquals(items.TF3, tf3);
+      this.assertEquals(items.tf3, tf3);
 
       tf3.destroy();
     },
@@ -553,6 +555,31 @@ qx.Class.define("qx.test.ui.form.FormManager", {
       this.assertIdentical(f2, this.__form.getItem("c"));
       this.assertNull(this.__form.getItem("label"));
       this.assertIdentical(f3, this.__form.getItem("x"));
+      [f1, f2, f3].forEach(function (o) {
+        o.dispose();
+      });
+    },
+
+    testNameToLowerCase() {
+      // Test that names are automatically converted to lowercase
+      var f1 = new qx.ui.form.TextField();
+      var f2 = new qx.ui.form.TextField();
+      var f3 = new qx.ui.form.TextField();
+
+      // Add with capitalized names
+      this.__form.add(f1, "label1", null, "Username");
+      this.__form.add(f2, "label2", null, "EmailAddress");
+      this.__form.add(f3, "User Name"); // fallback from label
+
+      // Should be accessible with lowercase names
+      this.assertIdentical(f1, this.__form.getItem("username"));
+      this.assertIdentical(f2, this.__form.getItem("emailaddress"));
+      this.assertIdentical(f3, this.__form.getItem("username"));
+
+      // Should NOT be accessible with original capitalized names
+      this.assertNull(this.__form.getItem("Username"));
+      this.assertNull(this.__form.getItem("EmailAddress"));
+
       [f1, f2, f3].forEach(function (o) {
         o.dispose();
       });
