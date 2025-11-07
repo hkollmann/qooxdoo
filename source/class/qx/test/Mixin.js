@@ -870,6 +870,75 @@ qx.Class.define("qx.test.Mixin", {
         g5.sayJuhu()
       );
       g5.dispose();
+    },
+
+    /**
+     * Test for Issue #10068: Mixin constructor should be called before apply functions
+     * This tests that when a mixin defines a constructor that initializes data structures,
+     * these structures are available when property apply functions (that are also defined
+     * in the mixin) are called.
+     */
+    testMixinConstructorBeforeApply() {
+      // Define a Dialog base class with a property that has an init value
+      qx.Class.define("qx.test.Dialog10068", {
+        extend: qx.core.Object,
+        properties: {
+          formData: {
+            init: null,
+            nullable: true,
+            apply: "_applyFormData"
+          }
+        }
+      });
+
+      // Define a mixin that provides both the constructor and the apply function
+      qx.Mixin.define("qx.test.MForm10068", {
+        construct() {
+          // Initialize data structure that will be used by apply function
+          this._stuff = {};
+          this._constructorCalled = true;
+        },
+
+        members: {
+          _applyFormData(value, oldValue) {
+            // This apply function needs the _stuff object initialized by the constructor
+            // Issue #10068: This was called BEFORE the mixin constructor
+            if (!this._constructorCalled) {
+              throw new Error("Mixin constructor was not called before apply function!");
+            }
+            if (!this._stuff) {
+              throw new Error("Mixin constructor did not initialize _stuff before apply function was called!");
+            }
+            this._stuff.formData = value;
+          }
+        }
+      });
+
+      // Define Form class that extends Dialog and includes the mixin
+      qx.Class.define("qx.test.Form10068", {
+        extend: qx.test.Dialog10068,
+        include: [qx.test.MForm10068],
+
+        construct() {
+          super();
+          // Setting property in constructor should trigger apply AFTER mixin constructor
+          this.setFormData({ test: "data" });
+        }
+      });
+
+      // This should not throw an error if mixin constructor runs before apply
+      var form = new qx.test.Form10068();
+
+      // Verify that the mixin constructor was called
+      this.assertTrue(form._constructorCalled, "Mixin constructor should have been called");
+      this.assertNotNull(form._stuff, "Mixin should have initialized _stuff");
+      this.assertEquals("data", form._stuff.formData.test, "Apply function should have stored formData");
+
+      form.dispose();
+
+      // Clean up
+      qx.Class.undefine("qx.test.Dialog10068");
+      qx.Class.undefine("qx.test.Form10068");
     }
   }
 });
