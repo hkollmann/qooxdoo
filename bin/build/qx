@@ -1,4 +1,14 @@
 #!/usr/bin/env node
+
+// Enable proxy support for enterprise environments
+if (process.env.GLOBAL_AGENT_HTTP_PROXY || process.env.HTTPS_PROXY) {
+  try {
+    require('global-agent').bootstrap();
+  } catch (e) {
+    // global-agent not available, continue without proxy support
+  }
+}
+
 const path=require("path");
 require(path.join(__dirname, "..", "..", "compiled", "node", "build", "compiler"));
 
