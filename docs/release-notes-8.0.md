@@ -86,11 +86,73 @@
 
     ```
     let arr = new qx.data.Array( [ 10, 11, 12 ] );
-    
+
     arr.setItem(0, 20); // traditional way to change values
     arr[1] = 21;        // new expermental way to change values
     delete arr[1];      // identical to arr.removeAt(1)
     ```
+
+- **New CLI Architecture**: The CLI system has been modernized by
+  moving from yargs to a custom CLI class-based architecture. This
+  provides better maintainability, more flexibility for extensions, and
+  improved type safety. The new system uses dedicated classes like
+  `qx.tool.cli.Flag`, `qx.tool.cli.Argument`, and `qx.tool.cli.Command`
+  for building command-line interfaces. While this is a breaking change
+  for projects using `compile.js` to extend commands, the new
+  architecture provides a cleaner and more powerful API.
+
+- **ESLint 9 Support with Flat Config**: Qooxdoo v8 migrates to ESLint
+  9, which uses the new "Flat Config" format. Key improvements include:
+  - More intuitive configuration structure using arrays of config objects
+  - Better file pattern matching with the `files` property
+  - Clearer separation of concerns with dedicated `ignores` configurations
+  - More flexible plugin system with direct imports
+  - **Automatic Migration**: Existing `eslintConfig` in `compile.json`
+    is automatically converted to the new format, ensuring a smooth
+    transition. All Qooxdoo-specific ESLint rules are retained.
+  - **Node.js 20+**: This upgrade requires Node.js >= 20.0.0, bringing
+    the compiler up to date with modern JavaScript tooling standards.
+
+- **Significantly Reduced Package Size**: The `qx.locale` classes have
+  been reimplemented using the native [Internationalization
+  API](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl)
+  instead of bundling the extensive [Common Locale Data
+  Repository](http://cldr.unicode.org) npm package with its numerous
+  CLDR XML files. This change:
+  - Dramatically reduces the installed Qooxdoo package size
+  - Improves installation speed
+  - Leverages browser-native internationalization capabilities
+  - Maintains compatibility with minimal differences (e.g., date format
+    patterns may vary slightly in some locales)
+  - Provides better performance by using optimized native implementations
+
+- **Automatic Migration Tool**: Qooxdoo v8 includes a comprehensive
+  automatic migration tool (`qx migrate`) to help upgrade applications
+  from v7 to v8. The migration tool:
+  - Automatically updates Manifest.json and dependencies
+  - Replaces deprecated API patterns (e.g., `instance.name` →
+    `instance.classname`)
+  - Upgrades installed packages to v8-compatible versions
+  - Provides detailed warnings and guidance for manual changes
+  - Supports dry-run mode to preview changes before applying them
+  - Offers verbose mode for detailed migration logs
+
+  This significantly simplifies the upgrade process and ensures that
+  developers are aware of all necessary changes.
+
+- **Improved Developer Experience**:
+  - **Better Debugging**: The rewritten class and property system makes
+    it much easier to debug property internals when investigating
+    unexpected behavior. Property values and their lifecycle are more
+    transparent.
+  - **More Intuitive API**: Native properties allow direct assignment
+    and access, making code more readable and closer to standard
+    JavaScript patterns while maintaining all property system benefits.
+  - **Enhanced Type Safety**: The new architecture provides better
+    opportunities for TypeScript integration and type checking.
+  - **Clearer Error Messages**: Property check validation now provides
+    more helpful error messages at class load time rather than at
+    runtime.
 
 ## Breaking changes in v8.0
 
