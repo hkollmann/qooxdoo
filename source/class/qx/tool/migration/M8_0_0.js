@@ -156,21 +156,14 @@ qx.Class.define("qx.tool.migration.M8_0_0", {
      * Should be replaced with instance.classname
      */
     async migrateInstanceName() {
-      const sourceDir = path.join(process.cwd(), "source");
-      if (!(await fs.existsAsync(sourceDir))) {
-        return;
-      }
-
-      const jsFiles = path.join(sourceDir, "**", "*.js");
-
-      // Replace .name with .classname (be careful with false positives)
-      await this.replaceInFilesUnlessDryRun([
-        {
-          files: jsFiles,
-          from: /\.name(?=\s*[;\),\n])/g,
-          to: ".classname"
-        }
-      ]);
+      this.announce(
+        "*** IMPORTANT: instance.name No Longer Available ***\n" +
+        "The predefined instance.name variable is no longer available.\n" +
+        "Please replace all uses of instance.name with instance.classname.\n\n" +
+        "This change was necessary because with native properties,\n" +
+        "instance.name conflicts with the commonly used property name 'name'."
+      );
+      this.markAsPending("Replace instance.name with instance.classname");
     },
 
     /**

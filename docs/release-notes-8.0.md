@@ -322,33 +322,35 @@ application from v7 to v8. The migration tool will:
 
 ### Automatic Migrations:
 - Update Manifest.json and dependencies
-- Replace `instance.name` with `instance.classname` in source files
 - Upgrade installed packages to v8-compatible versions
 
 ### Manual Review Required:
 The migration tool will warn you about the following items that require
 manual review and adjustment:
 
-1. **CLI System Changes**: If you use `compile.js` to extend commands,
+1. **instance.name → instance.classname**: Replace all uses of
+   `instance.name` with `instance.classname` throughout your codebase.
+
+2. **CLI System Changes**: If you use `compile.js` to extend commands,
    you need to migrate from yargs to the new CLI class syntax (see
    example above).
 
-2. **Property/Member Namespace Conflicts**: Review your class
+3. **Property/Member Namespace Conflicts**: Review your class
    definitions for any conflicts where both a property and member have
    the same name.
 
-3. **Table Model Updates**: Ensure that table edits are completed or
+4. **Table Model Updates**: Ensure that table edits are completed or
    cancelled before setting table model data.
 
-4. **Node.js Version**: Verify you are using Node.js >= 20.0.0.
+5. **Node.js Version**: Verify you are using Node.js >= 20.0.0.
 
-5. **Locale Functionality**: Test your locale-specific functionality as
+6. **Locale Functionality**: Test your locale-specific functionality as
    the implementation has changed from CLDR to the native Intl API.
 
-6. **Property Check Functions**: Ensure property `check` configurations
+7. **Property Check Functions**: Ensure property `check` configurations
    use functions or classes, not strings.
 
-7. **Renamed Properties**: If you use any of the renamed properties
+8. **Renamed Properties**: If you use any of the renamed properties
    listed above (e.g., `qx.event.handler.Focus.focus` →
    `focusedElement`), update your code accordingly.
 
