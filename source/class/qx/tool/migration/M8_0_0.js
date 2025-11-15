@@ -166,6 +166,123 @@ qx.Class.define("qx.tool.migration.M8_0_0", {
     },
 
     /**
+     * Migrate compile.js from yargs to CLI classes
+     * This is a major breaking change in v8
+     */
+    async migrateCompileJs() {
+      const compileJsPath = path.join(process.cwd(), "compile.js");
+      if (!(await fs.existsAsync(compileJsPath))) {
+        return;
+      }
+
+      const content = await fs.readFileAsync(compileJsPath, "utf8");
+
+      // Check if using old yargs API
+      if (content.includes("getYargsCommand") || content.includes("yargs")) {
+        this.announce(
+          "*** IMPORTANT: CLI System Breaking Change ***\n" +
+          "The CLI system has been migrated from yargs to custom CLI classes.\n" +
+          "If your compile.js extends commands, you need to update the syntax.\n\n" +
+          "Old syntax:\n" +
+          "  let yargs = qx.tool.cli.commands.Test.getYargsCommand;\n" +
+          "  qx.tool.cli.commands.Test.getYargsCommand = () => { ... };\n\n" +
+          "New syntax:\n" +
+          "  let originalCreateCliCommand = qx.tool.compiler.cli.commands.Test.createCliCommand;\n" +
+          "  qx.tool.compiler.cli.commands.Test.createCliCommand = async function(clazz) {\n" +
+          "    let cmd = await originalCreateCliCommand.call(this, clazz);\n" +
+          "    cmd.addFlag(new qx.tool.cli.Flag(...));\n" +
+          "  };\n\n" +
+          "See CHANGELOG.md for detailed migration guide."
+        );
+        this.markAsPending("Manual migration of compile.js required");
+      }
+    },
+
+    /**
+     * Check for instance.name usage (no longer available in v8)
+     * Should be replaced with instance.classname
+     */
+    async migrateInstanceName() {
+      const sourceDir = path.join(process.cwd(), "source");
+      if (!(await fs.existsAsync(sourceDir))) {
+        return;
+      }
+
+      const jsFiles = path.join(sourceDir, "**", "*.js");
+
+      // Replace .name with .classname (be careful with false positives)
+      await this.replaceInFilesUnlessDryRun([
+        {
+          files: jsFiles,
+          from: /\.name(?=\s*[;\),\n])/g,
+          to: ".classname"
+        }
+      ]);
+    },
+
+    /**
+     * Check for property and member namespace conflicts
+     * Properties and members now share the same namespace
+     */
+    async migratePropertyMemberConflicts() {
+      const sourceDir = path.join(process.cwd(), "source");
+      if (!(await fs.existsAsync(sourceDir))) {
+        return;
+      }
+
+      this.announce(
+        "*** IMPORTANT: Property/Member Namespace Change ***\n" +
+        "Properties and members are now in the same namespace.\n" +
+        "If a class has both a property and a member with the same name,\n" +
+        "this will cause a conflict. Please review your class definitions.\n\n" +
+        "Also note: Refining a property in a subclass now adds it to the\n" +
+        "subclass prototype instead of modifying it in place."
+      );
+      this.markAsPending("Manual review of property/member conflicts required");
+    },
+
+    /**
+     * Warn about Node.js version requirement for ESLint 9
+     */
+    async migrateNodeVersion() {
+      this.announce(
+        "*** IMPORTANT: Node.js Version Requirement ***\n" +
+        "qooxdoo v8 requires Node.js >= 20.0.0 for the compiler.\n" +
+        "This is due to the migration from ESLint 8 to ESLint 9.\n\n" +
+        "ESLint configuration in compile.json is automatically converted\n" +
+        "from the old format to the new Flat Config format.\n\n" +
+        "Plugin names must now be complete:\n" +
+        "  Old: '@qooxdoo/qx'\n" +
+        "  New: '@qooxdoo/eslint-plugin-qx' or full import"
+      );
+      this.markAsPending("Verify Node.js version >= 20.0.0");
+    },
+
+    /**
+     * Warn about qx.locale changes (CLDR → Intl API)
+     */
+    async migrateLocaleAPI() {
+      const sourceDir = path.join(process.cwd(), "source");
+      if (!(await fs.existsAsync(sourceDir))) {
+        return;
+      }
+
+      const jsFiles = path.join(sourceDir, "**", "*.js");
+
+      if (await this.checkFilesContain(jsFiles, "qx.locale")) {
+        this.announce(
+          "*** INFO: qx.locale Implementation Change ***\n" +
+          "qx.locale classes now use the native Internationalization API\n" +
+          "instead of the Common Locale Data Repository (CLDR) package.\n" +
+          "This significantly reduces package size but may cause minor\n" +
+          "differences in formatting for some locales.\n\n" +
+          "Please test your locale-specific functionality thoroughly."
+        );
+        this.markAsPending("Test locale functionality");
+      }
+    },
+
+    /**
      * Upgrade packages to v8 compatible versions
      */
     async migratePackages() {
