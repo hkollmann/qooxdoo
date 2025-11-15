@@ -64,31 +64,17 @@ qx.Class.define("qx.tool.migration.M8_0_0", {
      * This is now an error in v8, so we need to warn users
      */
     async migrateTableModelUsage() {
-      let dryRun = this.getRunner().getDryRun();
-
-      // Search for common patterns of setting table model data
-      const sourceDir = path.join(process.cwd(), "source");
-      if (!(await fs.existsAsync(sourceDir))) {
-        return;
-      }
-
-      // Check for patterns like table.getTableModel().setData*
-      const jsFiles = path.join(sourceDir, "**", "*.js");
-
-      // This is informational only - we can't automatically fix this
-      // because it requires understanding the application logic
-      if (await this.checkFilesContain(jsFiles, "setData")) {
-        this.announce(
-          "*** IMPORTANT: qx.ui.table.Table Breaking Change ***\n" +
-          "Setting model data while the table is editing will now raise an error.\n" +
-          "Please review your code to ensure that table edits are completed or\n" +
-          "cancelled before refreshing table model data.\n" +
-          "See: https://github.com/qooxdoo/qooxdoo/blob/master/CHANGELOG.md#breaking-changes"
-        );
-        this.markAsPending(
-          "Manual review required for table model data updates"
-        );
-      }
+      // This is informational only - always announce this breaking change
+      this.announce(
+        "*** IMPORTANT: qx.ui.table.Table Breaking Change ***\n" +
+        "Setting model data while the table is editing will now raise an error.\n" +
+        "Please review your code to ensure that table edits are completed or\n" +
+        "cancelled before refreshing table model data.\n" +
+        "See: https://github.com/qooxdoo/qooxdoo/blob/master/CHANGELOG.md#breaking-changes"
+      );
+      this.markAsPending(
+        "Manual review required for table model data updates"
+      );
     },
 
     /**
@@ -96,47 +82,14 @@ qx.Class.define("qx.tool.migration.M8_0_0", {
      * that might be removed in v8
      */
     async migrateDeprecatedAPIs() {
-      let dryRun = this.getRunner().getDryRun();
-      const sourceDir = path.join(process.cwd(), "source");
-
-      if (!(await fs.existsAsync(sourceDir))) {
-        return;
-      }
-
-      const deprecationPatterns = [
-        {
-          pattern: "qx.lang.normalize.Date",
-          message: "qx.lang.normalize.Date is deprecated since v7.0",
-          replacement: "Use native Date methods instead"
-        },
-        {
-          pattern: "String.startsWith",
-          context: "qx.lang.String.startsWith",
-          message: "qx.lang.String.startsWith is deprecated since v6.0",
-          replacement: "Use native String.prototype.startsWith instead"
-        },
-        {
-          pattern: "String.endsWith",
-          context: "qx.lang.String.endsWith",
-          message: "qx.lang.String.endsWith is deprecated since v6.0",
-          replacement: "Use native String.prototype.endsWith instead"
-        }
-      ];
-
-      for (const deprecation of deprecationPatterns) {
-        if (await this.checkFilesContain(
-          path.join(sourceDir, "**", "*.js"),
-          deprecation.pattern
-        )) {
-          this.announce(
-            `Found usage of deprecated API: ${deprecation.message}\n` +
-            `Recommended action: ${deprecation.replacement}`
-          );
-          this.markAsPending(
-            `Review usage of ${deprecation.pattern}`
-          );
-        }
-      }
+      // Inform about deprecated APIs
+      this.announce(
+        "*** INFO: Deprecated APIs ***\n" +
+        "The following APIs are deprecated and may be removed in future versions:\n" +
+        "- qx.lang.normalize.Date (deprecated since v7.0) - Use native Date methods\n" +
+        "- qx.lang.String.startsWith/endsWith (deprecated since v6.0) - Use native String methods\n\n" +
+        "Please review your code for usage of these deprecated APIs."
+      );
     },
 
     /**
@@ -262,24 +215,14 @@ qx.Class.define("qx.tool.migration.M8_0_0", {
      * Warn about qx.locale changes (CLDR → Intl API)
      */
     async migrateLocaleAPI() {
-      const sourceDir = path.join(process.cwd(), "source");
-      if (!(await fs.existsAsync(sourceDir))) {
-        return;
-      }
-
-      const jsFiles = path.join(sourceDir, "**", "*.js");
-
-      if (await this.checkFilesContain(jsFiles, "qx.locale")) {
-        this.announce(
-          "*** INFO: qx.locale Implementation Change ***\n" +
-          "qx.locale classes now use the native Internationalization API\n" +
-          "instead of the Common Locale Data Repository (CLDR) package.\n" +
-          "This significantly reduces package size but may cause minor\n" +
-          "differences in formatting for some locales.\n\n" +
-          "Please test your locale-specific functionality thoroughly."
-        );
-        this.markAsPending("Test locale functionality");
-      }
+      this.announce(
+        "*** INFO: qx.locale Implementation Change ***\n" +
+        "qx.locale classes now use the native Internationalization API\n" +
+        "instead of the Common Locale Data Repository (CLDR) package.\n" +
+        "This significantly reduces package size but may cause minor\n" +
+        "differences in formatting for some locales.\n\n" +
+        "Please test your locale-specific functionality if you use it."
+      );
     },
 
     /**
