@@ -153,6 +153,162 @@
   confirming that the entire qooxdoo test suite successfully runs to
   completion.
 
+- **CLI System Migration**: Moves from yArgs to own CLI classes. If you
+  use `compile.js` to add commands to existing commands, the syntax has
+  changed:
+
+  Old syntax:
+  ```javascript
+  async load() {
+    let yargs = qx.tool.cli.commands.Test.getYargsCommand;
+    qx.tool.cli.commands.Test.getYargsCommand = () => {
+      let args = yargs();
+      args.builder.diag = {
+        describe: "show diagnostic output",
+        type: "boolean",
+        default: false
+      };
+    }
+  }
+  ```
+
+  New syntax:
+  ```javascript
+  async load() {
+    let originalCreateCliCommand = qx.tool.compiler.cli.commands.Test.createCliCommand;
+    qx.tool.compiler.cli.commands.Test.createCliCommand = async function(clazz) {
+      let cmd = await originalCreateCliCommand.call(this, clazz);
+
+      cmd.addFlag(
+        new qx.tool.cli.Flag("diag").set({
+          description: "show diagnostic output",
+          type: "boolean",
+          value: false
+        })
+      );
+    }
+  }
+  ```
+
+- **qx.ui.table.Table**: Setting model data for a `qx.ui.table.Table`
+  when the table is still editing will now raise an error as this could
+  have lead to an invalid edit. To prevent any errors, ensure that the
+  table edits are completed or cancelled before refreshing table model
+  data.
+
+- **ESLint 8 → ESLint 9 Migration**: This requires **Node.js >= 20.0.0**
+  for the compiler. Plugin resolution changes, plugin names must be
+  complete:
+  - Old: `@qooxdoo/qx`
+  - New: `@qooxdoo/eslint-plugin-qx` or full import
+
+  Main features of Flat Config:
+  1. Array structure: eslintConfig is now an array of config objects instead of a single object
+  2. ignores: Replaces ignorePatterns, as a separate config object
+  3. languageOptions: Combines parserOptions, globals and env
+  4. files: Specifies which files the config affects
+  5. plugins: Plugin configuration directly in the config object
+  6. Multiple config objects: Allows different rules for different file patterns
+
+  Old (ESLint < 9):
+  ```json
+  "eslintConfig": {
+    "extends": [...],
+    "rules": {...}
+  }
+  ```
+
+  New (ESLint >= 9 Flat Config):
+  ```json
+  "eslintConfig": [
+    { "ignores": [...] },
+    { "files": [...], "rules": {...} }
+  ]
+  ```
+
+  ✅ Old `eslintConfig` in `compile.json` is automatically converted
+  ✅ All existing Qooxdoo-specific rules are retained
+  ✅ No changes to existing projects required (except Node.js version)
+
+- **qx.locale Implementation**: `qx.locale` classes are now implemented
+  with the [Internationalization API](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl)
+  instead of the [Common Locale Data Repository](http://cldr.unicode.org)
+  npm package which is installed with a lot of CLDR xml files. This
+  change reduces an installed qooxdoo package size significantly. There
+  may be some differences for some locales. For example,
+  `getDateTimeFormat` method for `de_DE` and `yM` format gives `M/y`
+  instead of `MM/y` of the CLDR implementation.
+
+- **qx.util.PropertyUtil**: It was previously possible to get and set
+  theme and user values, independently of the proper property mechanism;
+  this is no longer allowed, although there are ways to detect if a user
+  or theme value is set. The methods in this class now return instances
+  of `qx.core.property.Property` (or maps etc) and not the POJOs used in
+  previous versions of Qooxdoo.
+
+- **qx.ui.core.MExecutable**: Bindings are setup to copy between the
+  command and the widget, which are then overwritten by theme values;
+  why this happens is not explained, and IMHO changes the property
+  values in unexpected ways (and will be overwritten by subsequent
+  property changes anyway). This no longer happens, and ordinary
+  bindings are used instead.
+
+## Migration from v7 to v8
+
+Qooxdoo v8 includes an automatic migration tool to help upgrade your
+application from v7 to v8. The migration tool will:
+
+### Automatic Migrations:
+- Update Manifest.json and dependencies
+- Replace `instance.name` with `instance.classname` in source files
+- Upgrade installed packages to v8-compatible versions
+
+### Manual Review Required:
+The migration tool will warn you about the following items that require
+manual review and adjustment:
+
+1. **CLI System Changes**: If you use `compile.js` to extend commands,
+   you need to migrate from yargs to the new CLI class syntax (see
+   example above).
+
+2. **Property/Member Namespace Conflicts**: Review your class
+   definitions for any conflicts where both a property and member have
+   the same name.
+
+3. **Table Model Updates**: Ensure that table edits are completed or
+   cancelled before setting table model data.
+
+4. **Node.js Version**: Verify you are using Node.js >= 20.0.0.
+
+5. **Locale Functionality**: Test your locale-specific functionality as
+   the implementation has changed from CLDR to the native Intl API.
+
+6. **Property Check Functions**: Ensure property `check` configurations
+   use functions or classes, not strings.
+
+7. **Renamed Properties**: If you use any of the renamed properties
+   listed above (e.g., `qx.event.handler.Focus.focus` →
+   `focusedElement`), update your code accordingly.
+
+### Running the Migration:
+
+First, perform a dry-run to see what changes would be made:
+```bash
+qx migrate --dry-run --verbose
+```
+
+Then execute the migration:
+```bash
+qx migrate --verbose
+```
+
+The migration tool supports both `--dry-run` mode (to preview changes
+without applying them) and `--verbose` mode (for detailed output).
+
+**Note**: After running the migration tool, thoroughly test your
+application as the v8 release includes significant internal changes to
+the class and property system.
+
 ## Licensing and Open Source Ownership
 
 As a team, we are a small group of experienced developers based around the world who use
