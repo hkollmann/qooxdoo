@@ -149,12 +149,18 @@ qx.Class.define("qx.test.ui.tree.virtual.TreeItem", {
       var modifiedModels = [];
 
       // Set up delegate with configureItem that adds changeOpen listener
+      // and bindItem that forces open symbol to always show (for lazy loading)
+      var that = this;
       this.tree.setDelegate({
         configureItem: function(item) {
           item.addListener("changeOpen", function(e) {
-            if (e.getData() && this.getModel() && this.getModel().getChildren() === null) {
+            // Log for debugging
+            var model = this.getModel();
+            var modelName = model ? model.getName() : "null";
+            var modelChildren = model ? model.getChildren() : "no model";
+
+            if (e.getData() && model && model.getChildren() === null) {
               // This is the key issue: this.getModel() returns wrong model
-              var model = this.getModel();
               modifiedModels.push(model.getName());
 
               // Set children as would happen in real lazy-loading scenario
@@ -165,6 +171,13 @@ qx.Class.define("qx.test.ui.tree.virtual.TreeItem", {
               );
             }
           });
+        },
+
+        bindItem: function(controller, item, index) {
+          controller.bindDefaultProperties(item, index);
+          // Always show open symbol even when children is null (for lazy loading)
+          // Set directly instead of binding to avoid stale index issues
+          item.setOpenSymbolMode("always");
         }
       });
 
@@ -173,30 +186,45 @@ qx.Class.define("qx.test.ui.tree.virtual.TreeItem", {
       this.tree.setModel(root);
       this.flush();
 
-      // Expand child 3 - should modify child3's children
-      this.tree.openNode(child3);
+      // Simulate user clicking to expand child 3
+      // Get the widget and manually trigger open (simulating user click)
+      var widget3 = this.__getWidgetForm(child3);
+      this.assertNotNull(widget3, "Widget for child 3 should exist");
+      widget3.setOpen(true);
       this.flush();
 
       // Verify child3 was modified (first expand)
       this.assertEquals(1, modifiedModels.length, "One model should have been modified");
       this.assertEquals("Child 3", modifiedModels[0], "Child 3 should have been modified");
       this.assertNotNull(child3.getChildren(), "Child 3 should have children after expand");
-      this.assertEquals(1, child3.getChildren().getLength(), "Child 3 should have 1 child");
+      if (child3.getChildren()) {
+        this.assertEquals(1, child3.getChildren().getLength(), "Child 3 should have 1 child");
+      }
 
       // Reset for next test
       modifiedModels = [];
 
-      // Close child 3
-      this.tree.closeNode(child3);
+      // Simulate user clicking to close child 3
+      widget3.setOpen(false);
       this.flush();
 
       // Reset children to null to simulate the scenario again
-      child3.getChildren().removeAll();
-      child3.getChildren().dispose();
+      var oldChildren = child3.getChildren();
+      if (oldChildren) {
+        oldChildren.removeAll();
+        oldChildren.dispose();
+      }
       child3.setChildren(null);
 
+      // Force tree to rebuild after model change
+      this.tree.refresh();
+      this.flush();
+
       // Re-open child 3 - this is where the bug occurs
-      this.tree.openNode(child3);
+      // After closing/reopening, the widget may be reused from pool with stale data
+      widget3 = this.__getWidgetForm(child3);
+      this.assertNotNull(widget3, "Widget for child 3 should exist after re-render");
+      widget3.setOpen(true);
       this.flush();
 
       // BUG: After close/re-open, getModel() returns wrong model

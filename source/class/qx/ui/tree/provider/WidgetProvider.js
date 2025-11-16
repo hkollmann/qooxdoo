@@ -91,9 +91,8 @@ qx.Class.define("qx.ui.tree.provider.WidgetProvider", {
         widget.setOpenSymbolMode("auto");
       }
 
-      if (this._tree.getOpenProperty()) {
-        widget.setModel(item);
-      }
+      // Always set the model so it's available in event handlers (issue #10470)
+      widget.setModel(item);
 
       this._bindItem(widget, row);
       qx.ui.core.queue.Widget.add(widget);
@@ -249,12 +248,15 @@ qx.Class.define("qx.ui.tree.provider.WidgetProvider", {
     __onOpenChanged(event) {
       var widget = event.getTarget();
 
-      var row = widget.getUserData("cell.row");
-      var item = this._tree.getLookupTable().getItem(row);
+      // Use the widget's model directly instead of looking it up via row index.
+      // The row index (cell.row) can be stale after the lookup table is rebuilt
+      // (e.g., after collapse/expand operations), leading to the wrong model
+      // being retrieved. See issue #10470.
+      var item = widget.getModel();
 
-      if (event.getData()) {
+      if (item && event.getData()) {
         this._tree.openNodeWithoutScrolling(item);
-      } else {
+      } else if (item) {
         this._tree.closeNodeWithoutScrolling(item);
       }
     }

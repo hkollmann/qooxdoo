@@ -99,8 +99,9 @@ qx.Mixin.define("qx.ui.tree.core.MWidgetController", {
      * @param index {Integer} The index of the item (node or leaf).
      */
     bindDefaultProperties(item, index) {
-      // bind model first
-      this.bindProperty("", "model", null, item, index);
+      // Model is set directly in WidgetProvider.getCellWidget() (see issue #10470)
+      // Don't create a binding for it here, as index-based bindings become stale
+      // when the lookup table is rebuilt during collapse/expand operations.
 
       this.bindProperty(
         this.getLabelPath(),
