@@ -123,100 +123,105 @@ qx.Class.define("qx.test.ui.tree.virtual.TreeItem", {
      * Test case for issue #10470: getModel() returns wrong model after collapse/expand
      *
      * The bug occurs when:
-     * 1. A tree item is expanded
-     * 2. The same tree item is collapsed
-     * 3. The tree item is re-expanded
-     * 4. getModel() on the VirtualTreeItem returns the wrong model
+     * 1. Items with children: null are configured with a changeOpen listener
+     * 2. In the listener, this.getModel() is called to modify children
+     * 3. After expand/collapse/re-expand, getModel() returns wrong model
+     * 4. The wrong model gets modified instead of the correct one
      */
     testGetModelAfterCollapseExpand() {
       var root = new qx.test.ui.tree.virtual.Node("Root");
+      root.getChildren().removeAll();
 
-      // Create child nodes with names that make it clear which is which
-      for (var i = 0; i < 5; i++) {
-        var child = new qx.test.ui.tree.virtual.Node("Child " + i);
-        // Add some sub-children to make them expandable
-        for (var j = 0; j < 3; j++) {
-          child.getChildren().push(
-            new qx.test.ui.tree.virtual.Leaf("Child " + i + "." + j)
-          );
+      // Create child nodes with children set to null initially
+      // to simulate lazy loading scenario from the issue
+      var child1 = new qx.test.ui.tree.virtual.Node("Child 1");
+      child1.setChildren(null);
+      var child2 = new qx.test.ui.tree.virtual.Node("Child 2");
+      child2.setChildren(null);
+      var child3 = new qx.test.ui.tree.virtual.Node("Child 3");
+      child3.setChildren(null);
+
+      root.getChildren().push(child1);
+      root.getChildren().push(child2);
+      root.getChildren().push(child3);
+
+      // Track which models were modified
+      var modifiedModels = [];
+
+      // Set up delegate with configureItem that adds changeOpen listener
+      this.tree.setDelegate({
+        configureItem: function(item) {
+          item.addListener("changeOpen", function(e) {
+            if (e.getData() && this.getModel() && this.getModel().getChildren() === null) {
+              // This is the key issue: this.getModel() returns wrong model
+              var model = this.getModel();
+              modifiedModels.push(model.getName());
+
+              // Set children as would happen in real lazy-loading scenario
+              model.setChildren(
+                new qx.data.Array([
+                  new qx.test.ui.tree.virtual.Leaf(model.getName() + ".1")
+                ])
+              );
+            }
+          });
         }
-        root.getChildren().push(child);
-      }
+      });
 
       this.tree.setLabelPath("name");
       this.tree.setChildProperty("children");
       this.tree.setModel(root);
       this.flush();
 
-      // Get child item 3
-      var child3 = root.getChildren().getItem(3);
-
-      // Open child 3
+      // Expand child 3 - should modify child3's children
       this.tree.openNode(child3);
       this.flush();
 
-      // Get the widget for child 3 and verify model is correct
-      var widget3 = this.__getWidgetForm(child3);
-      this.assertNotNull(widget3, "Widget for child 3 should exist");
-      this.assertEquals(
-        child3,
-        widget3.getModel(),
-        "Model should be Child 3 after opening"
-      );
-      this.assertEquals(
-        "Child 3",
-        widget3.getModel().getName(),
-        "Model name should be 'Child 3' after opening"
-      );
+      // Verify child3 was modified (first expand)
+      this.assertEquals(1, modifiedModels.length, "One model should have been modified");
+      this.assertEquals("Child 3", modifiedModels[0], "Child 3 should have been modified");
+      this.assertNotNull(child3.getChildren(), "Child 3 should have children after expand");
+      this.assertEquals(1, child3.getChildren().getLength(), "Child 3 should have 1 child");
+
+      // Reset for next test
+      modifiedModels = [];
 
       // Close child 3
       this.tree.closeNode(child3);
       this.flush();
 
-      // Re-open child 3
+      // Reset children to null to simulate the scenario again
+      child3.getChildren().removeAll();
+      child3.getChildren().dispose();
+      child3.setChildren(null);
+
+      // Re-open child 3 - this is where the bug occurs
       this.tree.openNode(child3);
       this.flush();
 
-      // Get the widget again and check that getModel() returns the correct model
-      widget3 = this.__getWidgetForm(child3);
-      this.assertNotNull(widget3, "Widget for child 3 should exist after re-open");
-      this.assertEquals(
-        child3,
-        widget3.getModel(),
-        "Model should still be Child 3 after re-opening (Issue #10470)"
-      );
+      // BUG: After close/re-open, getModel() returns wrong model
+      // The listener should modify child3, but might modify child2 or another item
+      this.assertEquals(1, modifiedModels.length, "One model should have been modified on re-expand");
       this.assertEquals(
         "Child 3",
-        widget3.getModel().getName(),
-        "Model name should be 'Child 3' after re-opening (Issue #10470)"
+        modifiedModels[0],
+        "Child 3 should have been modified (Issue #10470: getModel() returns wrong model)"
       );
 
-      // Also test with event listeners to verify the model in callbacks
-      var modelFromCallback = null;
-      var labelFromCallback = null;
-
-      // Add a listener that captures the model
-      widget3.addListener("changeOpen", function(e) {
-        modelFromCallback = this.getModel();
-        if (modelFromCallback) {
-          labelFromCallback = modelFromCallback.getName();
-        }
-      }, widget3);
-
-      // Trigger a collapse
-      this.tree.closeNode(child3);
-      this.flush();
-
-      // Verify the model in the callback was correct
-      this.assertEquals(
-        child3,
-        modelFromCallback,
-        "Model in callback should be Child 3"
+      // Verify the correct model was modified
+      this.assertNotNull(
+        child3.getChildren(),
+        "Child 3 should have children after re-expand (Issue #10470)"
       );
-      this.assertEquals(
-        "Child 3",
-        labelFromCallback,
-        "Model name in callback should be 'Child 3'"
+
+      // Verify wrong models were NOT modified
+      this.assertNull(
+        child1.getChildren(),
+        "Child 1 should not have been modified"
+      );
+      this.assertNull(
+        child2.getChildren(),
+        "Child 2 should not have been modified (Issue #10470: wrong model modified)"
       );
 
       // Clean up
