@@ -277,32 +277,7 @@ qx.Class.define("qx.event.Manager", {
       var entryMap = targetMap.get(entryKey);
 
       if (entryMap && entryMap.size > 0) {
-        var listeners = [...entryMap.values()];
-
-        if (qx.core.Environment.get("runtime.name") == "rhino") {
-          return listeners;
-        }
-
-        return new Proxy(listeners, {
-          deleteProperty(target, property) {
-            if (property !== "length") {
-              var listener = target[property];
-              entryMap.delete(listener.unique);
-            }
-            delete target[property];
-            return true;
-          },
-          set(target, property, value, receiver) {
-            if (property !== "length") {
-              if (!value.unique) {
-                throw new Error("Cannot store a listener without a unique id. Use addListener()");
-              }
-              entryMap[value.unique] = value;
-            }
-            target[property] = value;
-            return true;
-          }
-        });
+        return [...entryMap.values()];
       }
       return null;
     },
