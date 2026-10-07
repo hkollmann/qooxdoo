@@ -507,6 +507,8 @@ qx.Class.define("qx.test.io.jsonrpc.Client", {
      */
     async "test: a request which fails at the transport is released"() {
       this.resetId();
+      // send() itself only rejects with the behavior of v7
+      this.setForwardTransportPromiseRejection(false);
       const transport = this.createStubbedTransport();
       transport.send.callsFake(() =>
         Promise.reject(this.createTransportException())

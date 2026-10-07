@@ -40,8 +40,9 @@ qx.Class.define("qx.io.jsonrpc.protocol.Message", {
       );
 
       for (const name in properties) {
-        // ignore property groups
-        if (properties[name].group != undefined) {
+        // ignore property groups and the qooxdoo metadata that
+        // qx.util.Serializer skips as well
+        if (properties[name] instanceof qx.core.property.GroupProperty || name == "qxOwner" || name == "qxObjectId") {
           continue;
         }
         message[name] = this.get(name);
